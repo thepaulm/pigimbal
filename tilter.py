@@ -7,6 +7,13 @@ import time
 bus = smbus.SMBus(1)
 addr = 0x40
 start = 312
+sleep_time = 0.05
+
+
+class Point:
+    def __init__(self, pan, tilt):
+        self.pan = pan
+        self.tilt = tilt
 
 def scale(x, in_min, in_max, out_min, out_max):
     return (x - in_min)*(out_max - out_min)/(in_max - in_min) + out_min
@@ -36,12 +43,29 @@ def set_tilt(setting):
 def set_pan(setting):
     bus.write_word_data(addr, 0x08, setting) # chl 0 end time = 1.5ms
 
+def do_point(p):
+    set_pan(p.pan)
+    set_tilt(p.tilt)
+    time.sleep(sleep_time)
+
+def run_square(p1, p3):
+    p2 = Point(p1.pan, p3.tilt)
+    p4 = Point(p3.pan, p1.tilt)
+    while True:
+        do_point(p1)
+        do_point(p2)
+        do_point(p3)
+        do_point(p4)
+
+
 def runner(win):
     pan = start
     tilt = start
     init_gimbal(start)
     last_key = None
     add_amnt = 1
+    p1 = None
+    p2 = None
 
     curses.cbreak()
     win.clear()
@@ -69,6 +93,17 @@ def runner(win):
             pan -= add_amnt
             win.addstr(">")
             set_pan(pan)
+        elif key == 49:
+            p1 = Point(pan, tilt)
+            win.addstr("Set Point 1: {}, {}".format(pan, tilt))
+        elif key == 50:
+            p2 = Point(pan, tilt)
+            win.addstr("Set Point 2: {}, {}".format(pan, tilt))
+        elif key == 115:
+            run_square(p1, p2)
+        else:
+            win.addstr("key was {}".format(key))
+
 
 def main():
     curses.wrapper(runner)
